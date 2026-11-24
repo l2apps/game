@@ -136,7 +136,7 @@ body{font-family:'Inter',sans-serif;background-color:#060913;color:#e2e8f0;overf
         <div class="bg-gradient-to-br from-amber-950/40 to-slate-950 border border-amber-800/50 rounded-xl p-3.5 space-y-2">
           <div class="font-extrabold text-amber-300 text-sm">💥 Sát Thương Va Chạm & Mốc Hồi Sinh</div>
           <ul class="space-y-1 text-[11.5px] leading-relaxed">
-            <li>• <strong class="text-white">Va chạm trực diện:</strong> Hai vòng tròn khác đội chạm nhau sẽ gây <strong class="text-amber-300">22% DMG</strong> cho nhau (hồi 0.45s/cặp) kèm đẩy lùi nhẹ.</li>
+            <li>• <strong class="text-white">Va chạm trực diện:</strong> Hai vòng tròn khác đội chạm nhau sẽ gây <strong class="text-amber-300">22% DMG</strong> (tầm gần) hoặc <strong class="text-sky-300">7% DMG</strong> (tầm xa) cho nhau (hồi 0.45s/cặp) kèm đẩy lùi nhẹ.</li>
             <li>• <strong class="text-white">Sát thủ đang lướt:</strong> Khi lướt va chạm trúng địch sẽ <strong class="text-emerald-400">giảm 90% sát thương nhận</strong> và <strong class="text-rose-400">tăng +50% sát thương gây ra</strong>.</li>
             <li>• <strong class="text-white">Thời gian hồi sinh theo phút:</strong> <span class="font-mono text-amber-300">15s</span> (0–1p) → <span class="font-mono text-amber-300">20s</span> (1–2p) → <span class="font-mono text-amber-300">30s</span> (2–3p) → <span class="font-mono text-amber-300">45s</span> (3–4p) → <span class="font-mono text-amber-300">50s</span> (4p+).</li>
           </ul>
@@ -189,34 +189,36 @@ body{font-family:'Inter',sans-serif;background-color:#060913;color:#e2e8f0;overf
 <script>
 const DEFAULT_ELO=1200;
 const TEAMS_KEY='auto_arena_teams_v4';
+const COLLISION_MELEE=0.22;
+const COLLISION_RANGED=0.07;
 const ARENA={W:1400,H:760,rectX:70,rectY:28,rectW:1260,rectH:704,fountainR:68,nexusOffset:135,nexusRange:175,nexusMaxHp:2400,nexusDmg:58,nexusCooldown:1.05,unitRadius:25};
 
-// 10 VAI TRÒ & KỸ NĂNG CHỦ ĐỘNG
+// 10 VAI TRÒ & KỸ NĂNG CHỦ ĐỘNG (ĐÃ CÂN BẰNG)
 const ROLES=[
  {
    id:'fighter',name:'Đấu sĩ',icon:'⚔️',
-   maxHp:600,dmg:46,armor:25,attackCd:.85,range:64,speed:112,critChance:.10,dodgeChance:.06,isRanged:false,
+   maxHp:680,dmg:52,armor:25,attackCd:.85,range:64,speed:120,critChance:.10,dodgeChance:.06,isRanged:false,
    skillCd:4.0,skillName:'Xoay Rìu',
    skillDesc:'Xoay vòng gây 1.35× DMG diện rộng (92px) và hồi máu bằng 35% tổng sát thương gây ra.',
    note:'Tuyến đầu bền bỉ, càng đông địch hút máu càng khỏe.'
  },
  {
    id:'assassin',name:'Sát thủ',icon:'🗡️',
-   maxHp:520,dmg:72,armor:25,attackCd:.78,range:60,speed:144,critChance:.22,dodgeChance:.09,isRanged:false,
+   maxHp:410,dmg:72,armor:12,attackCd:.78,range:60,speed:144,critChance:.22,dodgeChance:.09,isRanged:false,
    skillCd:3.5,skillName:'Lướt Ám Sát',
    skillDesc:'Lướt nhanh (tối đa 240px) về kẻ yếu máu nhất. Khi đang lướt va chạm trúng địch: giảm 90% DMG nhận, tăng +50% DMG gây ra. Hạ gục lập tức hồi chiêu!',
    note:'Chuyên móc lốp chủ lực, dễ tạo chuỗi quét sạch.'
  },
  {
    id:'mage',name:'Pháp sư',icon:'🔮',
-   maxHp:370,dmg:56,armor:10,attackCd:1.18,range:260,speed:100,critChance:.08,dodgeChance:.06,isRanged:true,projSpeed:390,projRadius:6,
+   maxHp:370,dmg:56,armor:10,attackCd:1.0,range:260,speed:100,critChance:.08,dodgeChance:.06,isRanged:true,projSpeed:390,projRadius:6,
    skillCd:4.0,skillName:'Tia Laser Xuyên Thấu',
    skillDesc:'Bắn tia laser dài 390px xuyên qua mục tiêu gần nhất, gây 1.5× DMG cho mọi địch trên đường thẳng.',
    note:'Sát thương xuyên đội hình cực mạnh khi địch đứng thẳng hàng.'
  },
  {
    id:'marksman',name:'Xạ thủ',icon:'🏹',
-   maxHp:380,dmg:68,armor:10,attackCd:.62,range:245,speed:108,critChance:.18,dodgeChance:.06,isRanged:true,projSpeed:520,projRadius:4.5,
+   maxHp:380,dmg:56,armor:10,attackCd:.65,range:245,speed:108,critChance:.18,dodgeChance:.06,isRanged:true,projSpeed:520,projRadius:4.5,
    skillCd:3.0,skillName:'Liên Thanh 3 Viên',
    skillDesc:'Bắn liên tiếp 3 viên đạn cực nhanh (cách nhau 0.09s) vào mục tiêu, mỗi viên 0.75× DMG.',
    note:'Tốc đánh cao, tự động thả diều lùi lại khi bị áp sát.'
@@ -230,16 +232,16 @@ const ROLES=[
  },
  {
    id:'swordsman',name:'Kiếm sĩ',icon:'🤺',
-   maxHp:490,dmg:56,armor:18,attackCd:.76,range:66,speed:128,critChance:.20,dodgeChance:.12,isRanged:false,
+   maxHp:490,dmg:60,armor:18,attackCd:.76,range:66,speed:128,critChance:.20,dodgeChance:.12,isRanged:false,
    skillCd:3.5,skillName:'Sóng Kiếm & Né Đòn',
    skillDesc:'Chém sóng kiếm xuyên thấu tầm 210px (1.35× DMG) và tăng tỷ lệ Né lên 55% trong 1.5s.',
    note:'Cơ động, tay đôi cực khó chịu nhờ khả năng né đòn.'
  },
  {
    id:'ninja',name:'Ninja',icon:'🥷',
-   maxHp:400,dmg:50,armor:12,attackCd:.78,range:175,speed:138,critChance:.16,dodgeChance:.10,isRanged:true,projSpeed:490,projRadius:4.5,
+   maxHp:440,dmg:50,armor:12,attackCd:.78,range:175,speed:138,critChance:.16,dodgeChance:.10,isRanged:true,projSpeed:490,projRadius:4.5,
    skillCd:3.5,skillName:'Phi Tiêu Phân Thân',
-   skillDesc:'Phóng 3 phi tiêu hình quạt (0.9× DMG/cái), rồi lập tức tốc biến lùi 95px để lại màn khói.',
+   skillDesc:'Phóng 3 phi tiêu hình quạt (0.95× DMG/cái), rồi lập tức tốc biến lùi 95px để lại màn khói.',
    note:'Quấy rối tầm trung, cực khó bị áp sát.'
  },
  {
@@ -268,7 +270,7 @@ const ROLES=[
 const ROLE_MAP=Object.fromEntries(ROLES.map(r=>[r.id,r]));
 function getRole(id){return ROLE_MAP[id]||ROLES[0]}
 
-// CÔNG THỨC ELO MỚI (Mốc chuẩn 1200)
+// CÔNG THỨC ELO (Mốc chuẩn 1200)
 function getEloStats(role,elo){
   const diff=(elo-DEFAULT_ELO)/100;
   const hpScale=Math.min(1.45,Math.max(0.75,1+diff*0.03));
@@ -501,16 +503,18 @@ function initMatch(){
       const spawnY=midY+spawnOffsets[idx].dy;
       gameState.champions.push({
         id:`${team}_${idx}`,team,slotIndex:idx,role,elo,member:m.name||'',
-        maxHp:stats.maxHp,hp:stats.maxHp,dmg:stats.dmg,armor:stats.armor,hpScale:stats.hpScale,
+        maxHp:stats.maxHp,hp:stats.maxHp,dmg:stats.dmg,armor:stats.armor,
+        hpScale:stats.hpScale,dmgScale:stats.dmgScale,
+        shield:0,shieldTimer:0,
         attackCd:role.attackCd,attackTimer:Math.random()*.35,
-        skillCd:role.skillCd,skillTimer:role.skillCd*(0.35+Math.random()*0.4),
+        skillCd:role.skillCd,skillTimer:role.skillCd*(0.35+Math.random()*0.45),
         range:role.range,speed:role.speed,x:spawnX,y:spawnY,vx:0,vy:0,
         k:0,d:0,a:0,alive:true,respawnTimer:0,spawnGlow:1,hitFlash:0,skillFlash:0,
-        shield:0,shieldTimer:0,stunTimer:0,slowTimer:0,dodgeBoostTimer:0,
-        dashTimer:0,dashVx:0,dashVy:0,dashHitIds:{},
-        burstQueue:[],
-        flankDir:Math.random()>.5?1:-1,jitterAngle:0,jitterTimer:Math.random()*.35,
-        strafeImpulse:0,strafeTimer:Math.random()*.8,
+        stunTimer:0,slowTimer:0,dodgeBoostTimer:0,
+        dashTimer:0,dashVx:0,dashVy:0,dashHitIds:{},burstQueue:[],
+        flankDir:Math.random()>.5?1:-1,
+        jitterAngle:0,jitterTimer:Math.random()*.3,
+        strafeTimer:Math.random()*.5,strafeImpulse:0,
         damageLog:{},trail:[]
       });
     });
@@ -672,7 +676,6 @@ function tryCastSkill(unit,targetInfo){
   const rId=unit.role.id;
   const enemies=gameState.champions.filter(c=>c.team!==unit.team&&c.alive);
   const allies=gameState.champions.filter(c=>c.team===unit.team&&c.alive);
-  const teamCol=unit.team==='blue'?'#38bdf8':'#fb7185';
 
   // 1. Trợ thủ: Hồi máu & Giáp ảo cho đồng đội yếu máu nhất
   if(rId==='support'){
@@ -766,7 +769,7 @@ function tryCastSkill(unit,targetInfo){
     return true;
   }
 
-  // 7. Ninja: 3 Phi Tiêu quạt (0.9x DMG) + Tốc biến lùi 95px
+  // 7. Ninja: 3 Phi Tiêu quạt (0.95x DMG) + Tốc biến lùi 95px
   if(rId==='ninja'){
     if(dToTarget>230)return false;
     const baseAng=Math.atan2(target.y-unit.y,target.x-unit.x);
@@ -776,7 +779,7 @@ function tryCastSkill(unit,targetInfo){
         attacker:unit,team:unit.team,targetType:'free',
         x:unit.x+Math.cos(a)*18,y:unit.y+Math.sin(a)*18,
         vx:Math.cos(a)*500,vy:Math.sin(a)*500,
-        radius:5.5,dmg:unit.dmg*0.9,color:'#cbd5e1',life:.58,isShuriken:true
+        radius:5.5,dmg:unit.dmg*0.95,color:'#cbd5e1',life:.58,isShuriken:true
       });
     });
     gameState.effects.push({type:'smoke',x:unit.x,y:unit.y,radius:14,maxRadius:42,color:'#94a3b8',life:.35,maxLife:.35});
@@ -1051,30 +1054,31 @@ function stepSimulation(sDt){
           if(aNewDashHit)a.dashHitIds[b.id]=true;
           if(bNewDashHit)b.dashHitIds[a.id]=true;
 
-          let dmgAtoB=a.dmg*0.22;
-          let dmgBtoA=b.dmg*0.22;
+          let dmgAtoB=a.dmg*(a.role.isRanged?COLLISION_RANGED:COLLISION_MELEE);
+          let dmgBtoA=b.dmg*(b.role.isRanged?COLLISION_RANGED:COLLISION_MELEE);
 
           // Sát thủ đang lướt: +50% sát thương gây ra (kèm đòn chém lướt) và -90% sát thương nhận
           if(aDash){
-            dmgAtoB=(aNewDashHit?a.dmg*1.1:dmgAtoB)*1.5;
+            if(aNewDashHit)dmgAtoB=a.dmg*1.15;
+            dmgAtoB*=1.5;
             dmgBtoA*=0.1;
-            const ang=Math.atan2(b.y-a.y,b.x-a.x);
-            gameState.effects.push({type:'slash',x:b.x,y:b.y,angle:ang,radius:36,color:'#fde047',life:.24,maxLife:.24});
           }
           if(bDash){
-            dmgBtoA=(bNewDashHit?b.dmg*1.1:dmgBtoA)*1.5;
+            if(bNewDashHit)dmgBtoA=b.dmg*1.15;
+            dmgBtoA*=1.5;
             dmgAtoB*=0.1;
-            const ang=Math.atan2(a.y-b.y,a.x-b.x);
-            gameState.effects.push({type:'slash',x:a.x,y:a.y,angle:ang,radius:36,color:'#fde047',life:.24,maxLife:.24});
           }
 
           if(a.alive&&b.alive)applyDamageToChampion(a,b,dmgAtoB,false,false);
           if(a.alive&&b.alive)applyDamageToChampion(b,a,dmgBtoA,false,false);
 
-          // Đẩy lùi nhẹ chống dính chùm
-          const nx=(b.x-a.x)/(d||1),ny=(b.y-a.y)/(d||1);
-          if(a.alive&&!aDash){a.x=clampArenaX(a.x-nx*9);a.y=clampArenaY(a.y-ny*9)}
-          if(b.alive&&!bDash){b.x=clampArenaX(b.x+nx*9);b.y=clampArenaY(b.y+ny*9)}
+          // Hiệu ứng va chạm nhẹ và đẩy lùi
+          const midX=(a.x+b.x)/2,midY=(a.y+b.y)/2;
+          gameState.effects.push({type:'ring',x:midX,y:midY,radius:6,maxRadius:(aDash||bDash)?34:20,color:(aDash||bDash)?'#fde047':'#94a3b8',life:.18,maxLife:.18});
+          const pushAng=Math.atan2(b.y-a.y,b.x-a.x);
+          const pushForce=8;
+          if(a.alive&&!aDash){a.x=clampArenaX(a.x-Math.cos(pushAng)*pushForce);a.y=clampArenaY(a.y-Math.sin(pushAng)*pushForce)}
+          if(b.alive&&!bDash){b.x=clampArenaX(b.x+Math.cos(pushAng)*pushForce);b.y=clampArenaY(b.y+Math.sin(pushAng)*pushForce)}
         }
       }
     }
@@ -1083,7 +1087,7 @@ function stepSimulation(sDt){
   updateNexusDefense(gameState.blueNexus,'blue',sDt);
   updateNexusDefense(gameState.redNexus,'red',sDt);
 
-  // Cập nhật đạn
+  // CẬP NHẬT ĐẠN BAY
   for(let i=gameState.projectiles.length-1;i>=0;i--){
     const p=gameState.projectiles[i];
     p.life-=sDt;
@@ -1096,7 +1100,7 @@ function stepSimulation(sDt){
 
     let hit=false;
     if(p.targetType==='nexus'){
-      if(dist(p.x,p.y,p.targetEntity.x,p.targetEntity.y)<=30){
+      if(dist(p.x,p.y,p.targetEntity.x,p.targetEntity.y)<=34){
         hit=true;applyDamageToNexus(p.attacker,p.targetEntity,p.dmg);
       }
     }else{
@@ -1104,7 +1108,7 @@ function stepSimulation(sDt){
       if(hitEnemy){
         hit=true;
         if(p.isAoE){
-          gameState.effects.push({type:'aoe',x:p.x,y:p.y,radius:12,maxRadius:p.aoeRadius,color:p.color,life:.38,maxLife:.38});
+          gameState.effects.push({type:'aoe',x:p.x,y:p.y,radius:12,maxRadius:p.aoeRadius,color:p.color,life:.36,maxLife:.36});
           gameState.champions.forEach(c=>{
             if(c.team!==p.team&&c.alive){
               const d=dist(p.x,p.y,c.x,c.y);
@@ -1178,16 +1182,16 @@ function getMvpChampion(){
   return best;
 }
 
+// KẾT THÚC TRẬN (GIỮ NGUYÊN ELO CỐ ĐỊNH)
 function finishMatch(winningTeam){
   gameState.isMatchOver=true;gameState.isRunning=false;
   hideAceBanner();updatePlayButtonUI();
   const mvp=getMvpChampion();
-  const matchReport=gameState.champions.map(c=>({champ:c,isMvp:c.id===mvp.id}));
   renderHeader();renderScoreboard();
-  openVictoryModal(winningTeam,mvp,matchReport);
+  openVictoryModal(winningTeam,mvp);
 }
 
-function openVictoryModal(winningTeam,mvp,matchReport){
+function openVictoryModal(winningTeam,mvp){
   const isBlue=winningTeam==='blue';
   const titleEl=document.getElementById('victory-title');
   titleEl.textContent=`🏆 ${(isBlue?curNames.blue:curNames.red).toUpperCase()} CHIẾN THẮNG!`;
@@ -1200,13 +1204,20 @@ function openVictoryModal(winningTeam,mvp,matchReport){
   document.getElementById('modal-mvp-name').textContent=`${mvp.team==='blue'?'🔵':'🔴'} ${mvp.role.icon} ${mvp.member||mvp.role.name} (${curNames[mvp.team]})`;
   document.getElementById('modal-mvp-kda').textContent=`${mvp.k} / ${mvp.d} / ${mvp.a}`;
 
-  const renderTeamRows=team=>matchReport.filter(r=>r.champ.team===team).map(r=>{
-    const eloColor=team==='blue'?'text-sky-300':'text-rose-300';
-    return `<div class="flex items-center justify-between bg-slate-900/90 px-2.5 py-1.5 rounded-lg border border-slate-800">
-      <span class="flex items-center gap-1.5 font-semibold text-slate-200"><span>${r.champ.role.icon}</span><span>${esc(r.champ.member||r.champ.role.name)}</span>${r.isMvp?'<span title="MVP">👑</span>':''}</span>
-      <span class="font-mono font-bold"><span class="text-slate-300">${r.champ.k}/${r.champ.d}/${r.champ.a}</span> <span class="text-slate-600 mx-1">•</span> <span class="${eloColor}">${r.champ.elo}</span></span>
-    </div>`;
-  }).join('');
+  const renderTeamRows=team=>gameState.champions.filter(c=>c.team===team).map(c=>`
+    <div class="flex items-center justify-between bg-slate-900/90 px-2.5 py-1.5 rounded-lg border border-slate-800">
+      <span class="flex items-center gap-1.5 font-semibold text-slate-200 truncate">
+        <span>${c.role.icon}</span>
+        <span class="truncate">${esc(c.member||c.role.name)}</span>
+        ${c.id===mvp.id?'<span title="MVP">👑</span>':''}
+      </span>
+      <span class="font-mono font-bold shrink-0">
+        <span class="${team==='blue'?'text-sky-400':'text-rose-400'}">${c.k}</span>/<span class="text-slate-300">${c.d}</span>/<span class="text-slate-400">${c.a}</span>
+        <span class="text-slate-600 mx-1">•</span>
+        <span class="text-amber-300">${c.elo}</span>
+      </span>
+    </div>
+  `).join('');
 
   document.getElementById('modal-blue-elos').innerHTML=renderTeamRows('blue');
   document.getElementById('modal-red-elos').innerHTML=renderTeamRows('red');
@@ -1214,7 +1225,7 @@ function openVictoryModal(winningTeam,mvp,matchReport){
   modal.classList.remove('hidden');modal.classList.add('flex');
 }
 
-// VẼ SÀN ĐẤU & GIAO DIỆN
+// VẼ CANVAS & GIAO DIỆN
 const canvas=document.getElementById('arena-canvas');
 const ctx=canvas.getContext('2d');
 function setupCanvas(){
@@ -1240,31 +1251,39 @@ function renderScoreboard(){
   const mvp=gameState.champions.length?getMvpChampion():null;
   const mvpId=(mvp&&gameState.blueKills+gameState.redKills>0)?mvp.id:null;
   const html={blue:'',red:''};
-  ['blue','red'].forEach(side=>{
-    const b=side==='blue';
-    gameState.champions.filter(x=>x.team===side).forEach(c=>{
-      const dead=!c.alive;
-      const flash=gameState.highlightedSlots[side]===c.slotIndex?(b?'flash-blue':'flash-red'):'';
+
+  for(let idx=0;idx<5;idx++){
+    ['blue','red'].forEach(side=>{
+      const c=gameState.champions.find(x=>x.team===side&&x.slotIndex===idx);
+      if(!c)return;
+      const b=side==='blue',dead=!c.alive;
+      const flash=gameState.highlightedSlots[side]===idx?(b?'flash-blue':'flash-red'):'';
       html[side]+=`<div class='rounded-lg border ${b?'border-sky-900/70 bg-sky-950/30':'border-rose-900/70 bg-rose-950/30'} px-2.5 py-2 ${flash} ${dead?'opacity-45 grayscale':''}'>`
         +`<div class='flex items-center gap-2'><span class='w-8 h-8 shrink-0 rounded-full border flex items-center justify-center text-base ${b?'bg-sky-950 border-sky-500/80':'bg-rose-950 border-rose-500/80'}'>${c.role.icon}</span>`
         +`<div class='min-w-0 flex-1'><div class='text-sm font-bold text-slate-100 truncate'>${esc(c.member||c.role.name)}${c.id===mvpId?' 👑':''}</div>`
         +`<div class='text-[10px] text-slate-400'>${c.role.name} • Elo <span class='font-mono ${b?'text-sky-300':'text-rose-300'}'>${c.elo}</span></div></div>`
         +(dead?`<span class='text-[11px] font-mono bg-slate-800 text-amber-300 px-1.5 py-0.5 rounded border border-slate-700'>⏳ ${Math.ceil(c.respawnTimer)}s</span>`:'')
         +`</div><div class='mt-1 text-center font-mono text-sm font-bold'><span class='${b?'text-sky-400':'text-rose-400'}'>${c.k}</span> / <span class='text-slate-300'>${c.d}</span> / <span class='text-slate-400'>${c.a}</span></div></div>`;
-      if(gameState.highlightedSlots[side]===c.slotIndex)gameState.highlightedSlots[side]=-1;
+      if(gameState.highlightedSlots[side]===idx)gameState.highlightedSlots[side]=-1;
     });
+  }
+
+  ['blue','red'].forEach(side=>{
+    const b=side==='blue';
     document.getElementById('panel-'+side).innerHTML=`<div class='flex items-center justify-between gap-2 rounded-lg border ${b?'border-sky-800':'border-rose-800'} bg-slate-900/90 px-3 py-2'><span class='text-xs font-black tracking-wide truncate ${b?'text-sky-400':'text-rose-400'}'>${b?'🔵':'🔴'} ${esc((curNames[side]||'').toUpperCase())}</span><span class='text-right leading-none'><span class='block text-2xl font-black font-mono ${b?'text-sky-400':'text-rose-400'}'>${b?gameState.blueKills:gameState.redKills}</span><span class='text-[9px] text-slate-400 tracking-wider'>MẠNG</span></span></div>`+html[side];
   });
 }
 
 function drawRespawn(c){
   const b=c.team==='blue';
-  const x=b?ARENA.rectX+30:ARENA.rectX+ARENA.rectW-30;
-  const y=ARENA.rectY+ARENA.rectH/2+(c.slotIndex-2)*22;
-  ctx.save();ctx.globalAlpha=.65;ctx.beginPath();ctx.arc(x,y,9.5,0,Math.PI*2);
+  const x=b?ARENA.rectX+34:ARENA.rectX+ARENA.rectW-34;
+  const y=ARENA.rectY+ARENA.rectH/2+(c.slotIndex-2)*24;
+  ctx.save();ctx.globalAlpha=.65;
+  ctx.beginPath();ctx.arc(x,y,10.5,0,Math.PI*2);
   ctx.strokeStyle=b?'#38bdf8':'#fb7185';ctx.lineWidth=2;ctx.setLineDash([3,3]);ctx.stroke();ctx.setLineDash([]);
-  ctx.fillStyle='#e2e8f0';ctx.font='700 9px monospace';ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.fillText(Math.ceil(c.respawnTimer),x,y+.5);ctx.restore();
+  ctx.fillStyle='#e2e8f0';ctx.font='700 9.5px monospace';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(Math.ceil(c.respawnTimer),x,y+.5);
+  ctx.restore();
 }
 
 function renderArena(){
@@ -1275,11 +1294,11 @@ function renderArena(){
   ctx.save();
   ctx.fillStyle='#0b1221';ctx.fillRect(rectX,rectY,rectW,rectH);
   ctx.strokeStyle='rgba(148,163,184,.055)';ctx.lineWidth=1;
-  for(let x=rectX+40;x<rectX+rectW;x+=40){ctx.beginPath();ctx.moveTo(x,rectY);ctx.lineTo(x,rectY+rectH);ctx.stroke()}
-  for(let y=rectY+40;y<rectY+rectH;y+=40){ctx.beginPath();ctx.moveTo(rectX,y);ctx.lineTo(rectX+rectW,y);ctx.stroke()}
+  for(let x=rectX+48;x<rectX+rectW;x+=48){ctx.beginPath();ctx.moveTo(x,rectY);ctx.lineTo(x,rectY+rectH);ctx.stroke()}
+  for(let y=rectY+48;y<rectY+rectH;y+=48){ctx.beginPath();ctx.moveTo(rectX,y);ctx.lineTo(rectX+rectW,y);ctx.stroke()}
   ctx.strokeStyle='rgba(148,163,184,.14)';ctx.setLineDash([8,8]);
   ctx.beginPath();ctx.moveTo(rectX+rectW/2,rectY);ctx.lineTo(rectX+rectW/2,rectY+rectH);ctx.stroke();
-  ctx.beginPath();ctx.arc(rectX+rectW/2,midY,66,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.arc(rectX+rectW/2,midY,82,0,Math.PI*2);ctx.stroke();
   ctx.setLineDash([]);
   ctx.strokeStyle='#334155';ctx.lineWidth=2.5;ctx.strokeRect(rectX,rectY,rectW,rectH);
   ctx.restore();
@@ -1298,44 +1317,47 @@ function renderArena(){
       ctx.beginPath();ctx.arc(ef.x,ef.y,r,0,Math.PI*2);
       ctx.strokeStyle=ef.color;ctx.globalAlpha=Math.max(0,1-progress);
       ctx.lineWidth=ef.type==='aoe'?3.5:2.5;ctx.stroke();
-      if(ef.type==='aoe'||ef.type==='smoke'){
-        ctx.fillStyle=ef.color;ctx.globalAlpha=Math.max(0,(1-progress)*(ef.type==='smoke'?.35:.22));ctx.fill();
-      }
+      if(ef.type==='aoe'||ef.type==='smoke'){ctx.fillStyle=ef.color;ctx.globalAlpha=Math.max(0,(1-progress)*.24);ctx.fill()}
     }
     ctx.restore();
   });
 
-  // Tướng
+  // Vẽ 10 vòng tròn
   gameState.champions.forEach(c=>{
     if(!c.alive){drawRespawn(c);return}
     c.trail.forEach((t,idx)=>{
       ctx.save();ctx.beginPath();
-      ctx.arc(t.x,t.y,ARENA.unitRadius*(.45+idx*.08),0,Math.PI*2);
-      ctx.fillStyle=c.team==='blue'?'rgba(56,189,248,.16)':'rgba(251,113,133,.16)';
+      ctx.arc(t.x,t.y,ARENA.unitRadius*(.42+idx*.07),0,Math.PI*2);
+      ctx.fillStyle=c.dashTimer>0?'rgba(250,204,21,.28)':(c.team==='blue'?'rgba(56,189,248,.16)':'rgba(251,113,133,.16)');
       ctx.globalAlpha=t.alpha;ctx.fill();ctx.restore();
     });
     drawChampion(c);
   });
 
-  // Đạn
+  // Đạn bay
   gameState.projectiles.forEach(p=>{
     ctx.save();ctx.beginPath();ctx.arc(p.x,p.y,p.radius,0,Math.PI*2);
-    ctx.fillStyle=p.color;ctx.shadowColor=p.color;ctx.shadowBlur=p.isAoE?16:8;ctx.fill();ctx.restore();
+    ctx.fillStyle=p.color;ctx.shadowColor=p.color;ctx.shadowBlur=p.isAoE?14:8;ctx.fill();ctx.restore();
   });
 
-  // Hiệu ứng trên không (Slash, Laser, Wave, Dash)
+  // Hiệu ứng phía trên (Slash, Laser, Wave, Dash)
   gameState.effects.forEach(ef=>{
     const alpha=Math.max(0,ef.life/ef.maxLife);
     ctx.save();ctx.globalAlpha=alpha;
     if(ef.type==='slash'){
       ctx.beginPath();ctx.arc(ef.x,ef.y,ef.radius,ef.angle-.75,ef.angle+.75);
-      ctx.strokeStyle=ef.color;ctx.lineWidth=4;ctx.lineCap='round';ctx.shadowColor=ef.color;ctx.shadowBlur=10;ctx.stroke();
-    }else if(ef.type==='laser'||ef.type==='wave'||ef.type==='dash'){
+      ctx.strokeStyle=ef.color;ctx.lineWidth=4.5;ctx.lineCap='round';ctx.shadowColor=ef.color;ctx.shadowBlur=10;ctx.stroke();
+    }else if(ef.type==='laser'){
       ctx.beginPath();ctx.moveTo(ef.x1,ef.y1);ctx.lineTo(ef.x2,ef.y2);
-      ctx.strokeStyle=ef.color;ctx.lineWidth=ef.type==='wave'?10:(ef.type==='laser'?6:4);
-      ctx.lineCap='round';ctx.shadowColor=ef.color;ctx.shadowBlur=16;ctx.stroke();
+      ctx.strokeStyle=ef.color;ctx.lineWidth=8;ctx.shadowColor=ef.color;ctx.shadowBlur=18;ctx.stroke();
       ctx.beginPath();ctx.moveTo(ef.x1,ef.y1);ctx.lineTo(ef.x2,ef.y2);
-      ctx.strokeStyle='#ffffff';ctx.lineWidth=2;ctx.stroke();
+      ctx.strokeStyle='#ffffff';ctx.lineWidth=2.5;ctx.stroke();
+    }else if(ef.type==='wave'){
+      ctx.beginPath();ctx.moveTo(ef.x1,ef.y1);ctx.lineTo(ef.x2,ef.y2);
+      ctx.strokeStyle=ef.color;ctx.lineWidth=11;ctx.lineCap='round';ctx.shadowColor=ef.color;ctx.shadowBlur=14;ctx.stroke();
+    }else if(ef.type==='dash'){
+      ctx.beginPath();ctx.moveTo(ef.x1,ef.y1);ctx.lineTo(ef.x2,ef.y2);
+      ctx.strokeStyle=ef.color;ctx.lineWidth=5;ctx.lineCap='round';ctx.shadowColor=ef.color;ctx.shadowBlur=12;ctx.stroke();
     }
     ctx.restore();
   });
@@ -1354,11 +1376,11 @@ function renderArena(){
 
 function drawFountain(cx,cy,radius,strokeColor,fillColor){
   ctx.save();
-  const grad=ctx.createRadialGradient(cx,cy,8,cx,cy,radius);
+  const grad=ctx.createRadialGradient(cx,cy,10,cx,cy,radius);
   grad.addColorStop(0,fillColor);grad.addColorStop(1,'rgba(0,0,0,0)');
   ctx.beginPath();ctx.arc(cx,cy,radius,0,Math.PI*2);ctx.fillStyle=grad;ctx.fill();
   ctx.lineWidth=2.5;ctx.strokeStyle=strokeColor;ctx.shadowColor=strokeColor;ctx.shadowBlur=12;ctx.stroke();
-  ctx.shadowBlur=0;ctx.fillStyle=strokeColor;ctx.font='700 10px Inter, sans-serif';
+  ctx.shadowBlur=0;ctx.fillStyle=strokeColor;ctx.font='700 11px Inter, sans-serif';
   ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('TẾ ĐÀN',cx,cy);
   ctx.restore();
 }
@@ -1373,7 +1395,7 @@ function drawNexus(nexus,team,range){
   ctx.strokeStyle=isBlue?'rgba(56,189,248,.14)':'rgba(251,113,133,.14)';
   ctx.setLineDash([5,6]);ctx.lineWidth=1.5;ctx.stroke();ctx.setLineDash([]);
 
-  const r=27;
+  const r=32;
   ctx.beginPath();
   for(let i=0;i<6;i++){
     const a=(Math.PI/3)*i-Math.PI/6;
@@ -1383,10 +1405,10 @@ function drawNexus(nexus,team,range){
   ctx.closePath();ctx.fillStyle=darkFill;ctx.fill();
   ctx.lineWidth=3;ctx.strokeStyle=mainColor;ctx.shadowColor=mainColor;ctx.shadowBlur=15;ctx.stroke();
 
-  ctx.shadowBlur=0;ctx.font='18px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.shadowBlur=0;ctx.font='22px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
   ctx.fillText('🏰',nexus.x,nexus.y+1);
 
-  const bw=60,bh=6.5,bx=nexus.x-bw/2,by=nexus.y-r-15;
+  const bw=68,bh=7,bx=nexus.x-bw/2,by=nexus.y-r-16;
   ctx.fillStyle='#0f172a';ctx.fillRect(bx,by,bw,bh);
   ctx.fillStyle=isBlue?'#38bdf8':'#fb7185';ctx.fillRect(bx,by,bw*hpRatio,bh);
   ctx.strokeStyle='#334155';ctx.lineWidth=1;ctx.strokeRect(bx,by,bw,bh);
@@ -1395,64 +1417,74 @@ function drawNexus(nexus,team,range){
 
 function drawChampion(c){
   const isBlue=c.team==='blue';
-  const borderColor=c.hitFlash>0?'#ffffff':(isBlue?'#38bdf8':'#fb7185');
+  const isDashing=c.dashTimer>0;
+  const borderColor=c.hitFlash>0?'#ffffff':(isDashing?'#fde047':(c.skillFlash>0?'#fde047':(isBlue?'#38bdf8':'#fb7185')));
   const bgColor=isBlue?'#172554':'#4c0519';
   const r=ARENA.unitRadius;
   ctx.save();
 
-  // Vòng trạng thái: Hào quang né đòn / Làm chậm / Choáng / Tung chiêu
-  if(c.dodgeBoostTimer>0){
-    ctx.beginPath();ctx.arc(c.x,c.y,r+5,0,Math.PI*2);
-    ctx.strokeStyle='#fde047';ctx.lineWidth=2.5;ctx.stroke();
+  // Vòng hiệu ứng hồi sinh / làm chậm / né đòn / lướt
+  if(c.spawnGlow>0){
+    ctx.beginPath();ctx.arc(c.x,c.y,r+7,0,Math.PI*2);
+    ctx.strokeStyle='#fde047';ctx.globalAlpha=c.spawnGlow*.8;ctx.lineWidth=2.5;ctx.stroke();ctx.globalAlpha=1;
+  }
+  if(isDashing){
+    ctx.beginPath();ctx.arc(c.x,c.y,r+6,0,Math.PI*2);
+    ctx.strokeStyle='#fde047';ctx.lineWidth=2.5;ctx.shadowColor='#fde047';ctx.shadowBlur=12;ctx.stroke();ctx.shadowBlur=0;
   }
   if(c.slowTimer>0){
     ctx.beginPath();ctx.arc(c.x,c.y,r+4,0,Math.PI*2);
-    ctx.strokeStyle='#38bdf8';ctx.setLineDash([4,3]);ctx.lineWidth=2;ctx.stroke();ctx.setLineDash([]);
+    ctx.strokeStyle='#38bdf8';ctx.lineWidth=2;ctx.setLineDash([4,4]);ctx.stroke();ctx.setLineDash([]);
   }
-  if(c.stunTimer>0){
-    ctx.beginPath();ctx.arc(c.x,c.y,r+6,0,Math.PI*2);
-    ctx.strokeStyle='#facc15';ctx.lineWidth=2.5;ctx.stroke();
-  }
-  if(c.skillFlash>0){
-    ctx.beginPath();ctx.arc(c.x,c.y,r+8*(1-c.skillFlash/.35),0,Math.PI*2);
-    ctx.strokeStyle='#ffffff';ctx.globalAlpha=c.skillFlash*2;ctx.lineWidth=2;ctx.stroke();ctx.globalAlpha=1;
+  if(c.dodgeBoostTimer>0){
+    ctx.beginPath();ctx.arc(c.x,c.y,r+5,0,Math.PI*2);
+    ctx.strokeStyle='#fde047';ctx.lineWidth=2;ctx.stroke();
   }
 
+  // Thân vòng tròn
   ctx.beginPath();ctx.arc(c.x,c.y,r,0,Math.PI*2);ctx.fillStyle=bgColor;ctx.fill();
-  ctx.lineWidth=3;ctx.strokeStyle=borderColor;ctx.shadowColor=borderColor;ctx.shadowBlur=10;ctx.stroke();
+  ctx.lineWidth=3.2;ctx.strokeStyle=borderColor;ctx.shadowColor=borderColor;ctx.shadowBlur=11;ctx.stroke();
 
-  // Vòng tiến độ hồi chiêu mảnh bên trong
-  const cdRatio=1-Math.min(1,c.skillTimer/c.skillCd);
+  // Cung tiến độ hồi chiêu mảnh bên trong viền
+  const cdRatio=Math.max(0,1-(c.skillTimer/c.skillCd));
   ctx.shadowBlur=0;
-  ctx.beginPath();ctx.arc(c.x,c.y,r-3.5,-Math.PI/2,-Math.PI/2+Math.PI*2*cdRatio);
-  ctx.strokeStyle=cdRatio>=1?'rgba(250,204,21,.78)':'rgba(148,163,184,.28)';
-  ctx.lineWidth=2.2;ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(c.x,c.y,r-4,-Math.PI/2,-Math.PI/2+Math.PI*2*cdRatio);
+  ctx.strokeStyle=cdRatio>=1?'rgba(250,204,21,.75)':'rgba(255,255,255,.22)';
+  ctx.lineWidth=1.8;ctx.stroke();
 
-  ctx.font='20px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+  // Icon vai trò
+  ctx.font='19px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
   ctx.fillText(c.role.icon,c.x,c.y+1);
-  if(c.stunTimer>0){ctx.font='14px sans-serif';ctx.fillText('💫',c.x,c.y-r-20)}
+
+  // Biểu tượng Choáng trên đầu
+  if(c.stunTimer>0){
+    ctx.font='14px sans-serif';
+    ctx.fillText('💫',c.x,c.y-r-19);
+  }
 
   // Thanh máu + Giáp ảo
-  const bw=48,bh=6,bx=c.x-bw/2,by=c.y-r-13;
+  const bw=44,bh=5.5,bx=c.x-bw/2,by=c.y-r-11;
   const hpRatio=Math.max(0,c.hp/c.maxHp);
   ctx.fillStyle='#0f172a';ctx.fillRect(bx,by,bw,bh);
   ctx.fillStyle=hpRatio>.5?(isBlue?'#22d3ee':'#f43f5e'):(hpRatio>.25?'#facc15':'#f97316');
   ctx.fillRect(bx,by,bw*hpRatio,bh);
   if(c.shield>0){
     const shRatio=Math.min(1,c.shield/c.maxHp);
-    ctx.fillStyle='rgba(224,242,254,.92)';
-    ctx.fillRect(bx,by,bw*shRatio,3);
+    ctx.fillStyle='#f8fafc';
+    ctx.fillRect(bx,by,bw*shRatio,2.5);
   }
 
-  // Chỉ hiển thị tên thành viên dưới vòng tròn (ẩn Elo trong trận)
+  // Chỉ hiện tên thành viên nếu có (đã ẩn số Elo dưới vòng tròn)
   if(c.member){
-    ctx.shadowColor='#000';ctx.shadowBlur=4;
-    ctx.fillStyle='#e2e8f0';ctx.font='700 11.5px Inter, sans-serif';
-    ctx.fillText(c.member,c.x,c.y+r+13);
+    ctx.shadowColor='#000';ctx.shadowBlur=3;
+    ctx.fillStyle='#e2e8f0';ctx.font='700 11px Inter, sans-serif';
+    ctx.fillText(c.member,c.x,c.y+r+12);
   }
   ctx.restore();
 }
 
+// THÔNG BÁO & ĐIỀU KHIỂN
 let killBannerTimer=null;
 function showKillBanner(killer,victim){
   const kBlue=killer.team==='blue';
@@ -1527,7 +1559,12 @@ let hdrAcc=0,lastTime=performance.now();
 function gameLoop(now){
   const dt=Math.min(.05,(now-lastTime)/1000);
   lastTime=now;
-  if(view==='match'){updateSimulation(dt);hdrAcc+=dt;if(hdrAcc>.1){hdrAcc=0;renderHeader()}renderArena()}
+  if(view==='match'){
+    updateSimulation(dt);
+    hdrAcc+=dt;
+    if(hdrAcc>.1){hdrAcc=0;renderHeader()}
+    renderArena();
+  }
   requestAnimationFrame(gameLoop);
 }
 
