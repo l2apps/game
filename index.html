@@ -10,7 +10,7 @@ select option:disabled{color:#475569}</style></head>
  <h1 class="font-black mr-3">⚔️ Auto-Arena</h1>
  <button data-tab="teams" class="tab px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 border border-slate-700">👥 Đội</button>
  <button data-tab="tour" class="tab px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 border border-slate-700">🏆 Giải đấu</button>
- <button data-tab="match" class="tab px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 border border-slate-700">🏟️ Sân đấu</button>
+ <button data-tab="hist" class="tab px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 border border-slate-700">📜 Lịch sử & BXH</button>
  <span id="season-label" class="ml-auto text-xs font-bold text-amber-300"></span>
  <button id="btn-guide" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 text-sky-300 border border-slate-700">📖 Bách thư</button>
 </nav>
@@ -27,6 +27,7 @@ select option:disabled{color:#475569}</style></head>
  <div id="teams-list" class="space-y-2"></div>
 </section>
 <section id="view-tour" class="hidden"><div class="bg-slate-900/90 border border-slate-800 rounded-xl p-6 text-center text-slate-400">🏆 Hệ thống giải đấu sẽ được hoàn thiện ở Đợt 2 (<code>tournament.js</code>).</div></section>
+<section id="view-hist" class="hidden"></section>
 <section id="view-match" class="hidden space-y-3">
  <header class="bg-slate-900/90 border border-slate-800 rounded-xl px-4 py-2 flex flex-wrap items-center justify-between gap-2">
   <div class="text-sm font-bold text-sky-400" id="blue-name">ĐỘI XANH</div>
