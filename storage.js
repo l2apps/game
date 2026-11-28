@@ -1,7 +1,9 @@
 const KEY='auto_arena_v5', OLD='auto_arena_teams_v4';
 const uid=()=>'t'+Date.now().toString(36)+Math.floor(Math.random()*1e4);
+// Elo ngẫu nhiên cho tuyển thủ của đội mới: 1100–1500, bước 10
+const randElo=()=>1100+10*Math.floor(Math.random()*41);
 export function newTeam(name,region='red'){
-  return {id:uid(),name,region,members:Array.from({length:5},()=>({name:'',elo:1200})),trophies:[],fmvps:[]};
+  return {id:uid(),name,region,members:Array.from({length:5},()=>({name:'',elo:randElo()})),trophies:[],fmvps:[]};
 }
 export function load(){
   try{const d=JSON.parse(localStorage.getItem(KEY)||'null');if(d&&Array.isArray(d.teams))return d}catch(e){}
