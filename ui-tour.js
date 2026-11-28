@@ -26,7 +26,7 @@ function render(){const st=C.st,s=st.season;$('season-label').textContent=s.name
     <button data-create='region' class='${BTN}bg-indigo-600 text-white'>Tạo giải (tối thiểu 4 đội)</button></div>
    <div class='bg-slate-900/90 border border-slate-800 rounded-xl p-3 space-y-2'><b>🌍 Tạo Giải WC</b> <span class='text-[11px] text-slate-400'>(4 đội/khu vực, tự lấy Top 4 giải khu vực nếu có)</span>
     <input data-f='wname' value='${esc(wf.name)}' placeholder='World Championship ${esc(s.name)}' class='${inp} w-full'>
-    <div class='grid grid-cols-2 gap-2'>${REGIONS.map(r=>`<div class='text-[11px]'><div class='font-bold'>${r.icon}</div>${[0,1,2,3].map(i=>`<select data-wc='${r.id}:${i}' class='${inp} w-full mb-0.5'><option value=''>— chọn —</option>${st.teams.filter(t=>t.region===r.id).map(t=>`<option value='${t.id}' ${wf.sel[r.id][i]===t.id?'selected':''}>${esc(t.name)}</option>`).join('')}</select>`).join('')}</div>`).join('')}</div>
+    <div class='grid grid-cols-2 gap-2'>${REGIONS.map(r=>`<div class='text-[11px]'><div class='font-bold'>${r.icon}</div>${[0,1,2,3].map(i=>`<select data-wc='${r.id}:${i}' class='${inp} w-full mb-0.5'><option value=''>— Seed ${i+1} —</option>${st.teams.filter(t=>t.region===r.id).map(t=>`<option value='${t.id}' ${wf.sel[r.id][i]===t.id?'selected':''}>${esc(t.name)}</option>`).join('')}</select>`).join('')}</div>`).join('')}</div>
     <button data-create='wc' class='${BTN}bg-indigo-600 text-white'>Tạo giải WC (16 đội)</button></div></div>`;
   h+=st.tour.map(t=>tourHtml(t)).join('')||`<div class='text-slate-500 text-sm p-4'>Chưa có giải nào trong mùa này.</div>`;
   $('view-tour').innerHTML=h+'</div>'}
@@ -38,8 +38,8 @@ function tourHtml(t){const o=open.has(t.id),rg=REGIONS.find(r=>r.id===t.region);
   if(o){h+=`<div class='p-3 pt-0 space-y-3'>`;
    if(t.kind==='region'&&t.stage!=='po'||t.kind==='region'&&t.matches.some(m=>m.stage==='rr'))h+=`<table class='text-xs w-full max-w-md'><tr class='text-slate-400'><td>#</td><td>Đội</td><td>T-B</td><td>Ván</td></tr>${T.standings(t).map((x,i)=>`<tr class='${i<4?'text-amber-200':''}'><td>${i+1}</td><td>${esc(nm(x.id))}</td><td>${x.w}-${x.l}</td><td>${x.gw}-${x.gl}</td></tr>`).join('')}</table>`;
    if(t.kind==='wc'){const rec=T.swissRec(t);h+=`<div class='text-xs flex flex-wrap gap-1'>${t.teams.map(id=>`<span class='bg-slate-950 border ${rec[id].w>=3?'border-emerald-700':rec[id].l>=3?'border-rose-900 opacity-60':'border-slate-800'} rounded px-2 py-0.5'>${esc(nm(id))} <b>${rec[id].w}-${rec[id].l}</b></span>`).join('')}</div>`}
-   const groups=[...new Set(t.matches.map(m=>m.stage==='swiss'?m.label.split(' (')[0]:m.stage==='rr'?'Vòng bảng':'Playoff'))];
-   groups.forEach(g=>{h+=`<div><div class='text-[11px] font-bold text-slate-400 mb-1'>${g}</div><div class='space-y-1'>${t.matches.filter(m=>(m.stage==='swiss'?m.label.split(' (')[0]:m.stage==='rr'?'Vòng bảng':'Playoff')===g).map(m=>mrow(t,m)).join('')}</div></div>`});
+   h+=drawPanel(t);const vis=t.matches.filter(m=>!m.h),groups=[...new Set(vis.map(m=>m.stage==='swiss'?m.label.split(' (')[0]:m.stage==='rr'?'Vòng bảng':'Playoff'))];
+   groups.forEach(g=>{h+=`<div><div class='text-[11px] font-bold text-slate-400 mb-1'>${g}</div><div class='space-y-1'>${vis.filter(m=>(m.stage==='swiss'?m.label.split(' (')[0]:m.stage==='rr'?'Vòng bảng':'Playoff')===g).map(m=>mrow(t,m)).join('')}</div></div>`});
    h+='</div>'}
   return h+'</div>'}
 function mrow(t,m){const S=T.sides(t,m),r=T.ready(t,m),d=m.status==='done',n=x=>x?esc(nm(x)):`<i class='text-slate-500'>${esc(T.refLabel(t,x===S.a?m.a:m.b))}</i>`;
@@ -47,7 +47,7 @@ function mrow(t,m){const S=T.sides(t,m),r=T.ready(t,m),d=m.status==='done',n=x=>
   const b=(a,l)=>`<button data-act='${a}' data-t='${t.id}' data-m='${m.id}' class='${BTN}bg-slate-800'>${l}</button>`;
   return `<div class='flex flex-wrap items-center gap-2 bg-slate-950/70 border border-slate-800 rounded px-2 py-1 text-xs'><span class='text-slate-500 w-28 truncate'>${esc(m.label)} • BO${m.bo}</span>
    <span class='${d&&m.winner===S.a?'text-emerald-300 font-bold':''}'>${A}</span><b class='font-mono'>${m.wins[0]} - ${m.wins[1]}</b><span class='${d&&m.winner===S.b?'text-emerald-300 font-bold':''}'>${B}</span>
-   <span class='ml-auto flex gap-1'>${d?'✔':r?b('live','⚔️ Vào Trận')+b('fast','⏩ Nhanh')+b('series','⏩⏩ Cả loạt'):'⏳'}</span></div>`}
+   ${S.a&&S.b&&reg(S.a)===reg(S.b)?"<span class='text-[9px] px-1 rounded bg-rose-500/20 text-rose-300'>Nội chiến</span>":''}<span class='ml-auto flex gap-1'>${d?'✔':r?b('live','⚔️ Vào Trận')+b('fast','⏩ Nhanh')+b('series','⏩⏩ Cả loạt'):'⏳'}</span></div>`}
 
 function chg(e){const el=e.target,d=el.dataset;
   if(d.f==='rregion'){rf.region=el.value;rf.sel.clear();render()}
@@ -55,6 +55,7 @@ function chg(e){const el=e.target,d=el.dataset;
   else if(d.wc){const[rg,i]=d.wc.split(':');wf.sel[rg][+i]=el.value}}
 
 function click(e){const st=C.st,t=e.target,d=t.closest('[data-act]'),o=t.closest('[data-open]');
+  const dr=t.closest('[data-draw]');if(dr){draw(st.tour.find(x=>x.id===dr.dataset.t),dr.dataset.draw==='all');return}
   if(d){const tr=st.tour.find(x=>x.id===d.dataset.t);run(tr,tr.matches.find(m=>m.id===d.dataset.m),d.dataset.act);return}
   if(t.closest('[data-create]')){create(t.closest('[data-create]').dataset.create);return}
   if(t.closest('[data-end]')){endSeason();return}
@@ -65,14 +66,17 @@ function create(kind){const st=C.st,s=st.season;
   if(kind==='region'){const ids=[...rf.sel].filter(id=>st.teams.find(t=>t.id===id));if(ids.length<4)return alert('Cần chọn ít nhất 4 đội.');
     const rg=REGIONS.find(r=>r.id===rf.region),t=T.createRegional({name:rf.name.trim()||rg.name+' Cup',region:rf.region,teamIds:ids,season:s.name});st.tour.unshift(t);open.add(t.id);rf.name='';rf.sel.clear()}
   else{const ids=REGIONS.flatMap(r=>wf.sel[r.id]);if(ids.some(x=>!x)||new Set(ids).size!==16)return alert('Cần chọn đủ 16 đội khác nhau (4 đội mỗi khu vực).');
-    const t=T.createWC({name:wf.name.trim()||'World Championship '+s.name,teams:ids,season:s.name});st.tour.unshift(t);open.add(t.id);wf.name=''}
+    const t=T.createWC({name:wf.name.trim()||'World Championship '+s.name,teams:ids,season:s.name,seeds:Object.fromEntries(REGIONS.flatMap(r=>wf.sel[r.id].map((id,i)=>[id,i+1])))});st.tour.unshift(t);open.add(t.id);wf.name=''}
   C.save();render()}
 
 async function run(t,m,mode){const st=C.st;
-  if(mode==='live'){const r=T.ready(t,m);if(!r)return;const a=m.games.length%2===0?'blue':'red',b=a==='blue'?'red':'blue';
-    const res=await C.playGame({blueId:a==='blue'?r.a:r.b,redId:a==='blue'?r.b:r.a,locked:{[a]:T.lockOf(m,'a'),[b]:T.lockOf(m,'b')},
-      title:`${t.name} • ${m.label} • Ván ${m.games.length+1}/BO${m.bo}`,sub:`${nm(r.a)} ${m.wins[0]} - ${m.wins[1]} ${nm(r.b)}`});
-    C.show('tour');if(!res)return;T.recordGame(m,res.S,a,res.pick,r)}
+  if(mode==='live'){const need=Math.ceil(m.bo/2);
+    while(m.status!=='done'){const r=T.ready(t,m);if(!r)break;const a=m.games.length%2===0?'blue':'red',b=a==='blue'?'red':'blue';
+      const res=await C.playGame({blueId:a==='blue'?r.a:r.b,redId:a==='blue'?r.b:r.a,locked:{[a]:T.lockOf(m,'a'),[b]:T.lockOf(m,'b')},
+        title:`${t.name} • ${m.label} • Ván ${m.games.length+1}/BO${m.bo}`,sub:`${nm(r.a)} ${m.wins[0]} - ${m.wins[1]} ${nm(r.b)}`,
+        cont:S=>m.wins[S.winner===a?0:1]+1<need});
+      if(!res)break;T.recordGame(m,res.S,a,res.pick,r);C.save()}
+    C.show('tour')}
   else if(mode==='fast')T.simGame(t,m,st.teams);else while(m.status!=='done')T.simGame(t,m,st.teams);
   if(m.status==='done')T.advance(t);C.save();if(t.done&&!t.awarded)fmvp(t);render()}
 
@@ -94,3 +98,16 @@ function endSeason(){const st=C.st,s=st.season;if(!confirm(`Kết thúc ${s.name
   C.save();C.refreshTeams();render();
   const d=modal(`<h2 class='text-lg font-black text-amber-300'>📈 Biến động phong độ cuối ${esc(s.name)}</h2>${ch.length?`<div class='space-y-1 text-xs'>${ch.map(c=>`<div class='flex justify-between bg-slate-950 border border-slate-800 rounded px-2 py-1'><span>${esc(c.t)} • ${esc(c.p)}</span><b class='font-mono ${c.b>c.a?'text-emerald-400':'text-rose-400'}'>${c.a} → ${c.b} (${c.b>c.a?'+':''}${c.b-c.a})</b></div>`).join('')}</div>`:'<div class="text-slate-400">Không ai biến động.</div>'}<button id='ok' class='${BTN}bg-slate-800 w-full py-2'>Đóng</button>`);
   d.querySelector('#ok').onclick=()=>d.remove()}
+
+const reg=id=>C.st.teams.find(t=>t.id===id)?.region,rnd=n=>Math.floor(Math.random()*n),sleep=ms=>new Promise(r=>setTimeout(r,ms));let busy=false;
+function drawPanel(t){const n=t.matches.filter(m=>m.h).length;if(!n)return '';
+  return `<div class='rounded-xl border border-amber-500/40 bg-amber-950/20 p-3 space-y-2'><div class='flex flex-wrap items-center gap-2'><b class='text-amber-300'>🎲 Bốc thăm (${n} cặp chưa bốc)</b>
+   <button data-draw='all' data-t='${t.id}' class='${BTN}bg-amber-600 text-white' ${busy?'disabled':''}>▶ Bốc tất cả</button><button data-draw='one' data-t='${t.id}' class='${BTN}bg-slate-800' ${busy?'disabled':''}>🎲 Bốc từng cặp</button></div>
+   <div id='db-${t.id}' class='text-center font-bold text-slate-300 py-2'>${t.stage==='swiss'&&t.round===1?'Vòng 1: Pool Cao (Seed 1-2) gặp Pool Thấp (Seed 3-4)':'Bấm bốc thăm để xác định các cặp đấu'}</div></div>`}
+async function draw(t,all){if(busy||!t)return;busy=true;
+  const pool=t.matches.filter(m=>m.h).flatMap(m=>[m.a,m.b]);const cnt=all?t.matches.filter(m=>m.h).length:1;
+  for(let c=0;c<cnt;c++){const m=t.matches.find(x=>x.h),t0=Date.now(),dur=all?350:800;
+    while(Date.now()-t0<dur){const a=pool[rnd(pool.length)];let b=pool[rnd(pool.length)];while(b===a)b=pool[rnd(pool.length)];
+      const box=$('db-'+t.id);if(box)box.textContent=`🎲 ${nm(a)}  vs  ${nm(b)}`;await sleep(70)}
+    m.h=false;C.save();busy=false;render();busy=true}
+  busy=false;render()}
