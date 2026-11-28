@@ -2,6 +2,7 @@ import {load,save,newTeam} from './storage.js';
 import {createMatch,step,render,simulateFast} from './engine.js';
 import {lockedRoles} from './roles.js';
 import {respawnAt} from './config.js';
+import {initHist} from './ui-history.js';
 import {initTour} from './ui-tour.js';
 import {renderTeams,renderGuide,openDraft,esc} from './ui-teams.js';
 const $=id=>document.getElementById(id);
@@ -9,7 +10,7 @@ const st=load();let series=null,S=null,running=false,view='teams',speedI=0,repor
 const SPEEDS=[1,2,4];st.tour=st.tour||[];st.history=st.history||[];st.season.ended=!!st.season.ended;
 const canvas=$('arena-canvas'),ctx=canvas.getContext('2d');
 function setupCanvas(){const d=devicePixelRatio||1;canvas.width=1400*d;canvas.height=760*d;ctx.setTransform(d,0,0,d,0,0)}
-function show(v){view=v;['teams','tour','match'].forEach(x=>$('view-'+x).classList.toggle('hidden',x!==v));
+function show(v){view=v;['teams','tour','match','hist'].forEach(x=>$('view-'+x).classList.toggle('hidden',x!==v));
   document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('border-amber-400',b.dataset.tab===v))}
 const team=id=>st.teams.find(t=>t.id===id);
 const refresh=()=>{save(st);renderTeams(st)};
@@ -29,7 +30,8 @@ $('btn-friendly').onclick=()=>{let a=$('sel-blue').value,b=$('sel-red').value;if
   startSeries(a,b,+$('sel-bo').value)};
 
 let resolveGame=null;
-export function playGame({blueId,redId,locked,title,sub}){
+let contFn=null;
+export function playGame({blueId,redId,locked,title,sub,cont}){contFn=cont||null;
   const T={blue:team(blueId),red:team(redId)};
   return openDraft({teams:T,locked,title:'Pick Tướng • '+title,sub}).then(pick=>{
     if(!pick)return null;
@@ -41,7 +43,7 @@ export function playGame({blueId,redId,locked,title,sub}){
     return new Promise(res=>{resolveGame=()=>res({S,pick})})})}
 export async function startSeries(a,b,bo){const w=[0,0],used=[[],[]],need=Math.ceil(bo/2);let no=1;
   while(w[0]<need&&w[1]<need){const as=(no-1)%2===0?'blue':'red',bs=as==='blue'?'red':'blue';
-    const r=await playGame({blueId:as==='blue'?a:b,redId:as==='blue'?b:a,locked:{[as]:lockedRoles(used[0],no,bo),[bs]:lockedRoles(used[1],no,bo)},title:`Giao hữu ván ${no}${bo>1?' • BO'+bo+' '+w[0]+'-'+w[1]:''}`,sub:bo>1?'Fearless Draft: vai trò đã dùng bị khóa 🔒':''});
+    const r=await playGame({blueId:as==='blue'?a:b,redId:as==='blue'?b:a,locked:{[as]:lockedRoles(used[0],no,bo),[bs]:lockedRoles(used[1],no,bo)},cont:S=>w[S.winner===as?0:1]+1<need,title:`Giao hữu ván ${no}${bo>1?' • BO'+bo+' '+w[0]+'-'+w[1]:''}`,sub:bo>1?'Fearless Draft: vai trò đã dùng bị khóa 🔒':''});
     if(!r)break;w[r.S.winner===as?0:1]++;used[0].push(r.pick[as]);used[1].push(r.pick[bs]);no++}
   show('teams')}
 $('btn-play').onclick=()=>{if(!S||S.over)return;running=!running;$('btn-play').textContent=running?'⏸ Tạm dừng':'▶ Tiếp tục'};
@@ -64,7 +66,7 @@ function endGame(){reported=true;const w=S.winner==='blue';
   $('v-title').textContent=`🏆 ${S.names[S.winner].toUpperCase()} THẮNG VÁN!`;$('v-title').className='text-2xl font-black text-center '+(w?'text-sky-400':'text-rose-400');
   $('v-sub').textContent=`⏱️ ${Math.floor(S.t/60)}p${Math.floor(S.t%60)}s • Mạng ${S.kills.blue}-${S.kills.red}`;
   ['blue','red'].forEach(sd=>$('v-'+sd).innerHTML=S.ch.filter(c=>c.team===sd).map(c=>`<div class='flex justify-between bg-slate-900 px-2 py-1 rounded border border-slate-800'><span>${c.role.icon} ${esc(c.member||c.role.name)}</span><span class='font-mono'>${c.k}/${c.d}/${c.a} • ${c.elo}</span></div>`).join(''));
-  $('v-next').textContent='▶ Tiếp tục';$('victory-modal').classList.remove('hidden');$('victory-modal').classList.add('flex')}
+  $('v-next').textContent=contFn&&contFn(S)?'▶ Ván tiếp theo (Pick tướng)':'✅ Hoàn tất';$('victory-modal').classList.remove('hidden');$('victory-modal').classList.add('flex')}
 
 function loop(now){const dt=Math.min(.05,(now-last)/1000);last=now;
   if(view==='match'&&S){if(running&&!S.over)step(S,dt);
@@ -73,4 +75,4 @@ function loop(now){const dt=Math.min(.05,(now-last)/1000);last=now;
     hdr+=dt;if(hdr>.15){hdr=0;drawPanels()}render(ctx,S);
     if(S.over&&!reported){running=false;drawPanels();endGame()}}
   requestAnimationFrame(loop)}
-renderGuide();renderTeams(st);setupCanvas();addEventListener('resize',setupCanvas);show('teams');initTour({st,save:()=>save(st),playGame,show,refreshTeams:()=>renderTeams(st)});requestAnimationFrame(loop);
+renderGuide();renderTeams(st);setupCanvas();addEventListener('resize',setupCanvas);show('teams');initTour({st,save:()=>save(st),playGame,show,refreshTeams:()=>renderTeams(st)});initHist({st});requestAnimationFrame(loop);
