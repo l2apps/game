@@ -2,10 +2,11 @@ import {load,save,newTeam} from './storage.js';
 import {createMatch,step,render,simulateFast} from './engine.js';
 import {lockedRoles} from './roles.js';
 import {respawnAt} from './config.js';
+import {initTour} from './ui-tour.js';
 import {renderTeams,renderGuide,openDraft,esc} from './ui-teams.js';
 const $=id=>document.getElementById(id);
 const st=load();let series=null,S=null,running=false,view='teams',speedI=0,reported=false,hdr=0,last=performance.now(),banner=null;
-const SPEEDS=[1,2,4];
+const SPEEDS=[1,2,4];st.tour=st.tour||[];st.history=st.history||[];st.season.ended=!!st.season.ended;
 const canvas=$('arena-canvas'),ctx=canvas.getContext('2d');
 function setupCanvas(){const d=devicePixelRatio||1;canvas.width=1400*d;canvas.height=760*d;ctx.setTransform(d,0,0,d,0,0)}
 function show(v){view=v;['teams','tour','match'].forEach(x=>$('view-'+x).classList.toggle('hidden',x!==v));
@@ -27,29 +28,26 @@ $('teams-list').onclick=e=>{const b=e.target.closest('[data-del]');if(!b||st.tea
 $('btn-friendly').onclick=()=>{let a=$('sel-blue').value,b=$('sel-red').value;if(a===b){b=st.teams.find(t=>t.id!==a).id;$('sel-red').value=b}
   startSeries(a,b,+$('sel-bo').value)};
 
-// Loạt BO (giao hữu dùng chung cơ chế với giải đấu ở Đợt 2)
-export function startSeries(blueId,redId,bo){series={bo,blue:blueId,red:redId,wins:{blue:0,red:0},used:{blue:[],red:[]},no:1};nextGame()}
-async function nextGame(){
-  const T={blue:team(series.blue),red:team(series.red)};
-  const locked={blue:lockedRoles(series.used.blue,series.no,series.bo),red:lockedRoles(series.used.red,series.no,series.bo)};
-  const pick=await openDraft({teams:T,locked,title:`Pick Tướng • Ván ${series.no}${series.bo>1?' / BO'+series.bo:''}`,
-    sub:series.bo>1?'Fearless Draft: vai trò đã dùng ở ván trước bị khóa 🔒'+(series.bo===7&&series.no===7?' (Ván 7: mở khóa toàn bộ)':''):'Giao hữu BO1'});
-  if(!pick){show('teams');return}
-  ['blue','red'].forEach(s=>series.used[s].push(pick[s]));
-  const lineup={};['blue','red'].forEach(s=>lineup[s]=T[s].members.map((m,i)=>({role:pick[s][i],elo:m.elo,name:m.name})));
-  S=createMatch(lineup,{blue:T.blue.name,red:T.red.name});S.speed=SPEEDS[speedI];reported=false;running=true;banner=null;
-  $('blue-name').textContent=T.blue.name.toUpperCase();$('red-name').textContent=T.red.name.toUpperCase();
-  $('victory-modal').classList.add('hidden');$('victory-modal').classList.remove('flex');
-  $('series-info').textContent=series.bo>1?`BO${series.bo} • ${series.wins.blue}-${series.wins.red}`:'BO1';
-  $('btn-play').textContent='⏸ Tạm dừng';show('match');drawPanels()}
-
+let resolveGame=null;
+export function playGame({blueId,redId,locked,title,sub}){
+  const T={blue:team(blueId),red:team(redId)};
+  return openDraft({teams:T,locked,title:'Pick Tướng • '+title,sub}).then(pick=>{
+    if(!pick)return null;
+    const lineup={};['blue','red'].forEach(s=>lineup[s]=T[s].members.map((m,i)=>({role:pick[s][i],elo:m.elo,name:m.name})));
+    S=createMatch(lineup,{blue:T.blue.name,red:T.red.name});S.speed=SPEEDS[speedI];reported=false;running=true;banner=null;
+    $('blue-name').textContent=T.blue.name.toUpperCase();$('red-name').textContent=T.red.name.toUpperCase();
+    $('victory-modal').classList.add('hidden');$('victory-modal').classList.remove('flex');
+    $('series-info').textContent=title;$('btn-play').textContent='⏸ Tạm dừng';show('match');drawPanels();
+    return new Promise(res=>{resolveGame=()=>res({S,pick})})})}
+export async function startSeries(a,b,bo){const w=[0,0],used=[[],[]],need=Math.ceil(bo/2);let no=1;
+  while(w[0]<need&&w[1]<need){const as=(no-1)%2===0?'blue':'red',bs=as==='blue'?'red':'blue';
+    const r=await playGame({blueId:as==='blue'?a:b,redId:as==='blue'?b:a,locked:{[as]:lockedRoles(used[0],no,bo),[bs]:lockedRoles(used[1],no,bo)},title:`Giao hữu ván ${no}${bo>1?' • BO'+bo+' '+w[0]+'-'+w[1]:''}`,sub:bo>1?'Fearless Draft: vai trò đã dùng bị khóa 🔒':''});
+    if(!r)break;w[r.S.winner===as?0:1]++;used[0].push(r.pick[as]);used[1].push(r.pick[bs]);no++}
+  show('teams')}
 $('btn-play').onclick=()=>{if(!S||S.over)return;running=!running;$('btn-play').textContent=running?'⏸ Tạm dừng':'▶ Tiếp tục'};
 $('btn-speed').onclick=()=>{speedI=(speedI+1)%3;if(S)S.speed=SPEEDS[speedI];$('speed-text').textContent=SPEEDS[speedI]+'x'};
 $('btn-skip').onclick=()=>{if(S&&!S.over){simulateFast(S);drawPanels()}};
-$('v-next').onclick=()=>series&&(isDone()?(show('teams')&&0,$('v-teams').click()):nextGame());
-$('v-teams').onclick=()=>{$('victory-modal').classList.add('hidden');$('victory-modal').classList.remove('flex');show('teams')};
-const isDone=()=>{const need=Math.ceil(series.bo/2);return series.wins.blue>=need||series.wins.red>=need};
-
+$('v-next').onclick=$('v-teams').onclick=()=>{$('victory-modal').classList.add('hidden');$('victory-modal').classList.remove('flex');if(resolveGame){const f=resolveGame;resolveGame=null;f()}};
 function drawPanels(){
   ['blue','red'].forEach(side=>{const b=side==='blue';
     $('panel-'+side).innerHTML=`<div class='flex justify-between rounded-lg border ${b?'border-sky-800':'border-rose-800'} bg-slate-900/90 px-3 py-2'><b class='text-xs ${b?'text-sky-400':'text-rose-400'} truncate'>${esc(S.names[side])}</b><b class='font-mono text-2xl ${b?'text-sky-400':'text-rose-400'}'>${S.kills[side]}</b></div>`
@@ -62,14 +60,11 @@ function showBanner(ev){const k=ev.killer,v=ev.victim,kb=k.team==='blue',el=$('k
   el.innerHTML=`<span class='${kb?'text-sky-400':'text-rose-400'}'>${k.role.icon} ${esc(k.member||k.role.name)}</span> <span class='text-slate-400 font-normal'>hạ gục</span> <span class='${kb?'text-rose-400':'text-sky-400'}'>${v.role.icon} ${esc(v.member||v.role.name)}</span>`;
   el.classList.add('show');clearTimeout(banner);banner=setTimeout(()=>el.classList.remove('show'),2200)}
 
-function endGame(){
-  reported=true;series.wins[S.winner]++;const w=S.winner==='blue';
-  $('v-title').textContent=`🏆 ${S.names[S.winner].toUpperCase()} THẮNG VÁN ${series.no}!`;$('v-title').className='text-2xl font-black text-center '+(w?'text-sky-400':'text-rose-400');
-  $('v-sub').textContent=`⏱️ ${Math.floor(S.t/60)}p${Math.floor(S.t%60)}s • Mạng ${S.kills.blue}-${S.kills.red}`+(series.bo>1?` • Loạt BO${series.bo}: ${series.wins.blue}-${series.wins.red}`:'');
+function endGame(){reported=true;const w=S.winner==='blue';
+  $('v-title').textContent=`🏆 ${S.names[S.winner].toUpperCase()} THẮNG VÁN!`;$('v-title').className='text-2xl font-black text-center '+(w?'text-sky-400':'text-rose-400');
+  $('v-sub').textContent=`⏱️ ${Math.floor(S.t/60)}p${Math.floor(S.t%60)}s • Mạng ${S.kills.blue}-${S.kills.red}`;
   ['blue','red'].forEach(sd=>$('v-'+sd).innerHTML=S.ch.filter(c=>c.team===sd).map(c=>`<div class='flex justify-between bg-slate-900 px-2 py-1 rounded border border-slate-800'><span>${c.role.icon} ${esc(c.member||c.role.name)}</span><span class='font-mono'>${c.k}/${c.d}/${c.a} • ${c.elo}</span></div>`).join(''));
-  const done=isDone();series.no++;$('v-next').textContent=done?'✅ Kết thúc loạt':'⚔️ Ván tiếp theo';
-  if(done){const t=series.wins.blue>series.wins.red?'blue':'red';$('v-sub').textContent+=` • 🏅 ${S.names[t]} thắng loạt`;$('v-next').onclick=()=>$('v-teams').click()}else $('v-next').onclick=nextGame;
-  $('victory-modal').classList.remove('hidden');$('victory-modal').classList.add('flex')}
+  $('v-next').textContent='▶ Tiếp tục';$('victory-modal').classList.remove('hidden');$('victory-modal').classList.add('flex')}
 
 function loop(now){const dt=Math.min(.05,(now-last)/1000);last=now;
   if(view==='match'&&S){if(running&&!S.over)step(S,dt);
@@ -78,4 +73,4 @@ function loop(now){const dt=Math.min(.05,(now-last)/1000);last=now;
     hdr+=dt;if(hdr>.15){hdr=0;drawPanels()}render(ctx,S);
     if(S.over&&!reported){running=false;drawPanels();endGame()}}
   requestAnimationFrame(loop)}
-renderGuide();renderTeams(st);setupCanvas();addEventListener('resize',setupCanvas);show('teams');requestAnimationFrame(loop);
+renderGuide();renderTeams(st);setupCanvas();addEventListener('resize',setupCanvas);show('teams');initTour({st,save:()=>save(st),playGame,show,refreshTeams:()=>renderTeams(st)});requestAnimationFrame(loop);
